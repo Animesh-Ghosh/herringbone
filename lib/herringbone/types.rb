@@ -84,8 +84,9 @@ module Herringbone
 
     # Physical attributes (type, logical type etc.) for a DSL type name
     #
-    # +:time+ and +:timestamp+ are adjusted to UTC; +:local_time+ and +:local_timestamp+ are not,
-    # and get no legacy converted type.
+    # +:time+ and +:timestamp+ hold values converted to UTC and are flagged isAdjustedToUTC;
+    # +:local_time+ and +:local_timestamp+ hold wall clock values, are not flagged and get no
+    # legacy converted type.
     # @param type [Symbol, String] column type name, e.g. +:string+, +:int64+, +:decimal+, +:timestamp+
     # @param opts [Hash{Symbol => Object}] type-specific options
     # @option opts [Boolean] :parquet_enum for +:enum+, annotate as ENUM instead of STRING
@@ -487,8 +488,8 @@ module Herringbone
     # anything responding to +hour+ and +nsec+ (Time, DateTime), and raises ArgumentError or
     # RangeError for anything else or a time past 23:59:59.
     # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
-    # @param utc [Boolean] whether the column is adjusted to UTC; when true a Time is converted to
-    #   UTC first, when false its wall clock time of day is stored
+    # @param utc [Boolean] true to convert a Time to UTC before taking its time of day, false to
+    #   take the time of day in the Time's own zone
     # @return [Proc] one-argument lambda
     # @raise [KeyError] for an unknown unit
     def time_writer(unit, utc)

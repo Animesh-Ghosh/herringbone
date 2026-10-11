@@ -653,8 +653,8 @@ module Herringbone
         define_method(t) { |name, **opts| column(name, t, **opts) }
       end
 
-      # A TIME column adjusted to UTC: a Time is stored as its time of day in UTC. Millis are
-      # stored as INT32, micros and nanos as INT64.
+      # A TIME column. A Time is converted to UTC when written, and its time of day in UTC is
+      # stored. Millis are stored as INT32, micros and nanos as INT64.
       #
       # @param name [String, Symbol] field name
       # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
@@ -664,8 +664,8 @@ module Herringbone
       # @return [Node] the added node
       # @raise [ArgumentError] for an unknown unit or a duplicate name
       def time(name, unit: :micros, **opts) = column(name, :time, unit: unit, **opts)
-      # A TIME column not adjusted to UTC: a Time is stored as its wall clock time of day, in
-      # whatever zone it is in. Millis are stored as INT32, micros and nanos as INT64.
+      # A TIME column for wall clock times of day. A Time is written as its time of day in its
+      # own zone, without converting it to UTC. Millis are stored as INT32, micros and nanos as INT64.
       #
       # @param name [String, Symbol] field name
       # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
@@ -675,8 +675,8 @@ module Herringbone
       # @return [Node] the added node
       # @raise [ArgumentError] for an unknown unit or a duplicate name
       def local_time(name, unit: :micros, **opts) = column(name, :local_time, unit: unit, **opts)
-      # A TIMESTAMP column adjusted to UTC, stored as INT64: an instant, whatever zone the
-      # written values are in.
+      # A TIMESTAMP column, stored as INT64. A Time in any zone is converted to UTC when written,
+      # so the column holds instants.
       #
       # @param name [String, Symbol] field name
       # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
@@ -686,8 +686,8 @@ module Herringbone
       # @return [Node] the added node
       # @raise [ArgumentError] for an unknown unit or a duplicate name
       def timestamp(name, unit: :micros, **opts) = column(name, :timestamp, unit: unit, **opts)
-      # A TIMESTAMP column not adjusted to UTC, stored as INT64: the wall clock date and time of
-      # the written values, with no zone.
+      # A TIMESTAMP column for wall clock date-times, stored as INT64. A Time is written as its
+      # date and time in its own zone, without converting it to UTC, and no zone is stored.
       #
       # @param name [String, Symbol] field name
       # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
@@ -931,8 +931,8 @@ module Herringbone
       #   the local_time and local_timestamp types replace
       def leaf_node(name, type, repetition, opts)
         if opts.key?(:utc)
-          raise ArgumentError, "#{name}: the utc: option is gone. Declare #{type} columns adjusted to UTC " \
-            "(instants) without it, and local ones (wall clock, no zone) as local_#{type}, " \
+          raise ArgumentError, "#{name}: the utc: option is gone. #{type} columns always convert Times to UTC when " \
+            "writing. To keep the wall clock time as given, without converting it, declare a local_#{type}, " \
             "e.g. s.local_#{type} :#{name} or s.column :#{name}, :local_#{type}"
         end
         opts = opts.dup

@@ -2286,8 +2286,9 @@ module Herringbone
 
     # Physical attributes (type, logical type etc.) for a DSL type name
     # 
-    # +:time+ and +:timestamp+ are adjusted to UTC; +:local_time+ and +:local_timestamp+ are not,
-    # and get no legacy converted type.
+    # +:time+ and +:timestamp+ hold values converted to UTC and are flagged isAdjustedToUTC;
+    # +:local_time+ and +:local_timestamp+ hold wall clock values, are not flagged and get no
+    # legacy converted type.
     # 
     # _@param_ `type` — column type name, e.g. +:string+, +:int64+, +:decimal+, +:timestamp+
     # 
@@ -2300,8 +2301,9 @@ module Herringbone
 
     # Physical attributes (type, logical type etc.) for a DSL type name
     # 
-    # +:time+ and +:timestamp+ are adjusted to UTC; +:local_time+ and +:local_timestamp+ are not,
-    # and get no legacy converted type.
+    # +:time+ and +:timestamp+ hold values converted to UTC and are flagged isAdjustedToUTC;
+    # +:local_time+ and +:local_timestamp+ hold wall clock values, are not flagged and get no
+    # legacy converted type.
     # 
     # _@param_ `type` — column type name, e.g. +:string+, +:int64+, +:decimal+, +:timestamp+
     # 
@@ -2605,7 +2607,7 @@ module Herringbone
     # 
     # _@param_ `unit` — +:millis+, +:micros+ or +:nanos+
     # 
-    # _@param_ `utc` — whether the column is adjusted to UTC; when true a Time is converted to UTC first, when false its wall clock time of day is stored
+    # _@param_ `utc` — true to convert a Time to UTC before taking its time of day, false to take the time of day in the Time's own zone
     # 
     # _@return_ — one-argument lambda
     sig { params(unit: Symbol, utc: T::Boolean).returns(Proc) }
@@ -2618,7 +2620,7 @@ module Herringbone
     # 
     # _@param_ `unit` — +:millis+, +:micros+ or +:nanos+
     # 
-    # _@param_ `utc` — whether the column is adjusted to UTC; when true a Time is converted to UTC first, when false its wall clock time of day is stored
+    # _@param_ `utc` — true to convert a Time to UTC before taking its time of day, false to take the time of day in the Time's own zone
     # 
     # _@return_ — one-argument lambda
     sig { params(unit: Symbol, utc: T::Boolean).returns(Proc) }
@@ -5520,8 +5522,8 @@ module Herringbone
       sig { void }
       def initialize; end
 
-      # A TIME column adjusted to UTC: a Time is stored as its time of day in UTC. Millis are
-      # stored as INT32, micros and nanos as INT64.
+      # A TIME column. A Time is converted to UTC when written, and its time of day in UTC is
+      # stored. Millis are stored as INT32, micros and nanos as INT64.
       # 
       # _@param_ `name` — field name
       # 
@@ -5533,8 +5535,8 @@ module Herringbone
       sig { params(name: T.any(String, Symbol), unit: Symbol, opts: T::Hash[Symbol, Object]).returns(Node) }
       def time(name, unit: :micros, **opts); end
 
-      # A TIME column not adjusted to UTC: a Time is stored as its wall clock time of day, in
-      # whatever zone it is in. Millis are stored as INT32, micros and nanos as INT64.
+      # A TIME column for wall clock times of day. A Time is written as its time of day in its
+      # own zone, without converting it to UTC. Millis are stored as INT32, micros and nanos as INT64.
       # 
       # _@param_ `name` — field name
       # 
@@ -5546,8 +5548,8 @@ module Herringbone
       sig { params(name: T.any(String, Symbol), unit: Symbol, opts: T::Hash[Symbol, Object]).returns(Node) }
       def local_time(name, unit: :micros, **opts); end
 
-      # A TIMESTAMP column adjusted to UTC, stored as INT64: an instant, whatever zone the
-      # written values are in.
+      # A TIMESTAMP column, stored as INT64. A Time in any zone is converted to UTC when written,
+      # so the column holds instants.
       # 
       # _@param_ `name` — field name
       # 
@@ -5559,8 +5561,8 @@ module Herringbone
       sig { params(name: T.any(String, Symbol), unit: Symbol, opts: T::Hash[Symbol, Object]).returns(Node) }
       def timestamp(name, unit: :micros, **opts); end
 
-      # A TIMESTAMP column not adjusted to UTC, stored as INT64: the wall clock date and time of
-      # the written values, with no zone.
+      # A TIMESTAMP column for wall clock date-times, stored as INT64. A Time is written as its
+      # date and time in its own zone, without converting it to UTC, and no zone is stored.
       # 
       # _@param_ `name` — field name
       # 

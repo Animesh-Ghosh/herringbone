@@ -2,10 +2,10 @@
 
 ## Unreleased
 
-- `time` columns store a `Time` as its time of day in UTC, as their isAdjustedToUTC flag says,
-  instead of in the `Time`'s own zone.
-- **Breaking:** `local_timestamp` and `local_time` (`s.local_timestamp :opens_at`,
-  `s.column :opens_at, :local_timestamp`) replace the `utc: false` option, which now raises.
+- `time` columns convert a `Time` to UTC when writing, as `timestamp` columns already did, instead
+  of storing its time of day in its own zone.
+- **Breaking:** `local_timestamp` and `local_time` (`s.local_timestamp :opens_at`) write the wall
+  clock time without converting it to UTC, replacing the `utc: false` option, which now raises.
 
 ## 0.7.0
 
