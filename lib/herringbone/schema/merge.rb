@@ -283,7 +283,7 @@ module Herringbone
         in [:int, 64, true] then Types.physical_attributes(:int64)
         in [:int, bits, signed] then Types.int_type(bits, signed)
         in [:float, bits] then Types.physical_attributes({16 => :float16, 32 => :float, 64 => :double}.fetch(bits))
-        in [:timestamp | :time => kind, unit, utc] then Types.physical_attributes(kind, unit: unit, utc: utc)
+        in [:timestamp | :time => kind, unit, utc] then Types.physical_attributes(utc ? kind : :"local_#{kind}", unit: unit)
         in [:text, :enum] then Types.physical_attributes(:enum, parquet_enum: true)
         in [:text, kind] then Types.physical_attributes(kind)
         in [:decimal, precision, scale] then Types.physical_attributes(:decimal, precision: precision, scale: scale)

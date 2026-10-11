@@ -653,28 +653,50 @@ module Herringbone
         define_method(t) { |name, **opts| column(name, t, **opts) }
       end
 
-      # A TIME column; millis are stored as INT32, micros and nanos as INT64.
+      # A TIME column. A Time is converted to UTC when written, and its time of day in UTC is
+      # stored. Millis are stored as INT32, micros and nanos as INT64.
       #
       # @param name [String, Symbol] field name
       # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
-      # @param utc [Boolean] the isAdjustedToUTC flag of the logical type
       # @param opts [Hash{Symbol => Object}] options of #column
       # @option opts [Boolean] :null (true) whether the field is nullable
       # @option opts [Integer, nil] :field_id (nil) field id to store in the schema
       # @return [Node] the added node
       # @raise [ArgumentError] for an unknown unit or a duplicate name
-      def time(name, unit: :micros, utc: true, **opts) = column(name, :time, unit: unit, utc: utc, **opts)
-      # A TIMESTAMP column, stored as INT64.
+      def time(name, unit: :micros, **opts) = column(name, :time, unit: unit, **opts)
+      # A TIME column for wall clock times of day. A Time is written as its time of day in its
+      # own zone, without converting it to UTC. Millis are stored as INT32, micros and nanos as INT64.
       #
       # @param name [String, Symbol] field name
       # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
-      # @param utc [Boolean] the isAdjustedToUTC flag: true for instants, false for local date-times
       # @param opts [Hash{Symbol => Object}] options of #column
       # @option opts [Boolean] :null (true) whether the field is nullable
       # @option opts [Integer, nil] :field_id (nil) field id to store in the schema
       # @return [Node] the added node
       # @raise [ArgumentError] for an unknown unit or a duplicate name
-      def timestamp(name, unit: :micros, utc: true, **opts) = column(name, :timestamp, unit: unit, utc: utc, **opts)
+      def local_time(name, unit: :micros, **opts) = column(name, :local_time, unit: unit, **opts)
+      # A TIMESTAMP column, stored as INT64. A Time in any zone is converted to UTC when written,
+      # so the column holds instants.
+      #
+      # @param name [String, Symbol] field name
+      # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
+      # @param opts [Hash{Symbol => Object}] options of #column
+      # @option opts [Boolean] :null (true) whether the field is nullable
+      # @option opts [Integer, nil] :field_id (nil) field id to store in the schema
+      # @return [Node] the added node
+      # @raise [ArgumentError] for an unknown unit or a duplicate name
+      def timestamp(name, unit: :micros, **opts) = column(name, :timestamp, unit: unit, **opts)
+      # A TIMESTAMP column for wall clock date-times, stored as INT64. A Time is written as its
+      # date and time in its own zone, without converting it to UTC, and no zone is stored.
+      #
+      # @param name [String, Symbol] field name
+      # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
+      # @param opts [Hash{Symbol => Object}] options of #column
+      # @option opts [Boolean] :null (true) whether the field is nullable
+      # @option opts [Integer, nil] :field_id (nil) field id to store in the schema
+      # @return [Node] the added node
+      # @raise [ArgumentError] for an unknown unit or a duplicate name
+      def local_timestamp(name, unit: :micros, **opts) = column(name, :local_timestamp, unit: unit, **opts)
       # A DECIMAL column. Up to 9 digits are stored as INT32, up to 18 as INT64, more as a
       # FIXED_LEN_BYTE_ARRAY of the minimal width, unless +physical:+ says otherwise.
       #
@@ -734,7 +756,6 @@ module Herringbone
       # @option type_opts [Integer] :precision decimal precision
       # @option type_opts [Integer] :scale decimal scale
       # @option type_opts [Symbol] :unit time or timestamp unit
-      # @option type_opts [Boolean] :utc time or timestamp UTC adjustment
       # @option type_opts [Integer] :length FIXED_LEN_BYTE_ARRAY width
       # @yield [list] declares the struct's fields for a +:struct+ element, or exactly one field
       #   (renamed to "element") when +type+ is nil
@@ -773,7 +794,6 @@ module Herringbone
       # @option type_opts [Integer] :precision decimal precision
       # @option type_opts [Integer] :scale decimal scale
       # @option type_opts [Symbol] :unit time or timestamp unit
-      # @option type_opts [Boolean] :utc time or timestamp UTC adjustment
       # @option type_opts [Integer] :length FIXED_LEN_BYTE_ARRAY width
       # @yield [map] declares the struct's fields for a +:struct+ value, or exactly one field
       #   (renamed to "value") when +value_type+ is nil
@@ -795,8 +815,8 @@ module Herringbone
       # Generic column declaration: s.column :name, :int32, null: false
       #
       # @param name [String, Symbol] field name
-      # @param type [Symbol, String] DSL type: one of PRIMITIVES, or +:time+, +:timestamp+,
-      #   +:decimal+, +:fixed+, +:enum+ with their options
+      # @param type [Symbol, String] DSL type: one of PRIMITIVES, or +:time+, +:local_time+,
+      #   +:timestamp+, +:local_timestamp+, +:decimal+, +:fixed+, +:enum+ with their options
       # @param null [Boolean] whether the field is nullable (optional rather than required)
       # @param field_id [Integer, nil] field id to store in the schema
       # @param opts [Hash{Symbol => Object}] type options
@@ -804,7 +824,6 @@ module Herringbone
       # @option opts [Integer] :scale (0) decimal scale
       # @option opts [Symbol] :physical decimal storage: +:int32+, +:int64+, +:binary+ or +:fixed+
       # @option opts [Symbol] :unit (:micros) time or timestamp unit
-      # @option opts [Boolean] :utc (true) time or timestamp UTC adjustment
       # @option opts [Integer] :length FIXED_LEN_BYTE_ARRAY width (required for +:fixed+)
       # @option opts [Array<String>, Hash] :values allowed values, see #enum
       # @option opts [Boolean] :parquet_enum (false) ENUM instead of STRING annotation, see #enum
@@ -908,8 +927,14 @@ module Herringbone
       #   and the rest go to Types.physical_attributes
       # @option opts [Array<String>, Hash] :values allowed values of a string/enum column
       # @return [Node] leaf node, not added to #nodes
-      # @raise [ArgumentError] for an unknown type or invalid type options
+      # @raise [ArgumentError] for an unknown type or invalid type options, or for +utc:+, which
+      #   the local_time and local_timestamp types replace
       def leaf_node(name, type, repetition, opts)
+        if opts.key?(:utc)
+          raise ArgumentError, "#{name}: the utc: option is gone. #{type} columns always convert Times to UTC when " \
+            "writing. To keep the wall clock time as given, without converting it, declare a local_#{type}, " \
+            "e.g. s.local_#{type} :#{name} or s.column :#{name}, :local_#{type}"
+        end
         opts = opts.dup
         values = opts.delete(:values)
         attrs = Types.physical_attributes(type.to_sym, **opts)

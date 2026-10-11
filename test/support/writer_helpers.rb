@@ -37,7 +37,7 @@ module WriterHelpers
     s.timestamp :ts_ms, unit: :millis
     s.timestamp :ts_us, unit: :micros
     s.timestamp :ts_ns, unit: :nanos
-    s.timestamp :ts_local, unit: :micros, utc: false
+    s.local_timestamp :ts_local, unit: :micros
     s.int96 :i96
     s.decimal :dec_small, precision: 9, scale: 2
     s.decimal :dec_med, precision: 18, scale: 4

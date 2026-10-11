@@ -2286,6 +2286,10 @@ module Herringbone
 
     # Physical attributes (type, logical type etc.) for a DSL type name
     # 
+    # +:time+ and +:timestamp+ hold values converted to UTC and are flagged isAdjustedToUTC;
+    # +:local_time+ and +:local_timestamp+ hold wall clock values, are not flagged and get no
+    # legacy converted type.
+    # 
     # _@param_ `type` — column type name, e.g. +:string+, +:int64+, +:decimal+, +:timestamp+
     # 
     # _@param_ `opts` — type-specific options
@@ -2296,6 +2300,10 @@ module Herringbone
     def physical_attributes(type, **opts); end
 
     # Physical attributes (type, logical type etc.) for a DSL type name
+    # 
+    # +:time+ and +:timestamp+ hold values converted to UTC and are flagged isAdjustedToUTC;
+    # +:local_time+ and +:local_timestamp+ hold wall clock values, are not flagged and get no
+    # legacy converted type.
     # 
     # _@param_ `type` — column type name, e.g. +:string+, +:int64+, +:decimal+, +:timestamp+
     # 
@@ -2490,7 +2498,8 @@ module Herringbone
     #   date:      Date, Time/DateTime (its calendar date), ISO-8601 String, Integer days since epoch
     #   timestamp: Time, DateTime, ActiveSupport::TimeWithZone, Date (midnight UTC), ISO-8601 String,
     #              Integer in the column's unit
-    #   time:      Time (its time of day), "HH:MM[:SS[.fraction]]" String, Integer in the column's unit
+    #   time:      Time (its time of day, in UTC unless the column is local), "HH:MM[:SS[.fraction]]"
+    #              String, Integer in the column's unit
     #   json:      String (used as-is) or any other object (serialized with JSON.generate)
     #   string:    String, Symbol or anything responding to to_s
     #   boolean:   true/false, 1/0, "true"/"false", "t"/"f", "1"/"0", "yes"/"no"
@@ -2512,7 +2521,8 @@ module Herringbone
     #   date:      Date, Time/DateTime (its calendar date), ISO-8601 String, Integer days since epoch
     #   timestamp: Time, DateTime, ActiveSupport::TimeWithZone, Date (midnight UTC), ISO-8601 String,
     #              Integer in the column's unit
-    #   time:      Time (its time of day), "HH:MM[:SS[.fraction]]" String, Integer in the column's unit
+    #   time:      Time (its time of day, in UTC unless the column is local), "HH:MM[:SS[.fraction]]"
+    #              String, Integer in the column's unit
     #   json:      String (used as-is) or any other object (serialized with JSON.generate)
     #   string:    String, Symbol or anything responding to to_s
     #   boolean:   true/false, 1/0, "true"/"false", "t"/"f", "1"/"0", "yes"/"no"
@@ -2597,9 +2607,11 @@ module Herringbone
     # 
     # _@param_ `unit` — +:millis+, +:micros+ or +:nanos+
     # 
+    # _@param_ `utc` — true to convert a Time to UTC before taking its time of day, false to take the time of day in the Time's own zone
+    # 
     # _@return_ — one-argument lambda
-    sig { params(unit: Symbol).returns(Proc) }
-    def time_writer(unit); end
+    sig { params(unit: Symbol, utc: T::Boolean).returns(Proc) }
+    def time_writer(unit, utc); end
 
     # Converter from a time of day to a count of +unit+ since midnight.
     # The lambda accepts an Integer (returned as-is), an "HH:MM[:SS[.fraction]]" String or
@@ -2608,9 +2620,11 @@ module Herringbone
     # 
     # _@param_ `unit` — +:millis+, +:micros+ or +:nanos+
     # 
+    # _@param_ `utc` — true to convert a Time to UTC before taking its time of day, false to take the time of day in the Time's own zone
+    # 
     # _@return_ — one-argument lambda
-    sig { params(unit: Symbol).returns(Proc) }
-    def self.time_writer(unit); end
+    sig { params(unit: Symbol, utc: T::Boolean).returns(Proc) }
+    def self.time_writer(unit, utc); end
 
     # String column restricted to a set of values. +values+ is an Array of labels, or a Hash of
     # label => stored value like Rails' `Model.statuses`, in which case either is accepted.
@@ -5508,47 +5522,57 @@ module Herringbone
       sig { void }
       def initialize; end
 
-      # A TIME column; millis are stored as INT32, micros and nanos as INT64.
+      # A TIME column. A Time is converted to UTC when written, and its time of day in UTC is
+      # stored. Millis are stored as INT32, micros and nanos as INT64.
       # 
       # _@param_ `name` — field name
       # 
       # _@param_ `unit` — +:millis+, +:micros+ or +:nanos+
       # 
-      # _@param_ `utc` — the isAdjustedToUTC flag of the logical type
-      # 
       # _@param_ `opts` — options of #column
       # 
       # _@return_ — the added node
-      sig do
-        params(
-          name: T.any(String, Symbol),
-          unit: Symbol,
-          utc: T::Boolean,
-          opts: T::Hash[Symbol, Object]
-        ).returns(Node)
-      end
-      def time(name, unit: :micros, utc: true, **opts); end
+      sig { params(name: T.any(String, Symbol), unit: Symbol, opts: T::Hash[Symbol, Object]).returns(Node) }
+      def time(name, unit: :micros, **opts); end
 
-      # A TIMESTAMP column, stored as INT64.
+      # A TIME column for wall clock times of day. A Time is written as its time of day in its
+      # own zone, without converting it to UTC. Millis are stored as INT32, micros and nanos as INT64.
       # 
       # _@param_ `name` — field name
       # 
       # _@param_ `unit` — +:millis+, +:micros+ or +:nanos+
       # 
-      # _@param_ `utc` — the isAdjustedToUTC flag: true for instants, false for local date-times
+      # _@param_ `opts` — options of #column
+      # 
+      # _@return_ — the added node
+      sig { params(name: T.any(String, Symbol), unit: Symbol, opts: T::Hash[Symbol, Object]).returns(Node) }
+      def local_time(name, unit: :micros, **opts); end
+
+      # A TIMESTAMP column, stored as INT64. A Time in any zone is converted to UTC when written,
+      # so the column holds instants.
+      # 
+      # _@param_ `name` — field name
+      # 
+      # _@param_ `unit` — +:millis+, +:micros+ or +:nanos+
       # 
       # _@param_ `opts` — options of #column
       # 
       # _@return_ — the added node
-      sig do
-        params(
-          name: T.any(String, Symbol),
-          unit: Symbol,
-          utc: T::Boolean,
-          opts: T::Hash[Symbol, Object]
-        ).returns(Node)
-      end
-      def timestamp(name, unit: :micros, utc: true, **opts); end
+      sig { params(name: T.any(String, Symbol), unit: Symbol, opts: T::Hash[Symbol, Object]).returns(Node) }
+      def timestamp(name, unit: :micros, **opts); end
+
+      # A TIMESTAMP column for wall clock date-times, stored as INT64. A Time is written as its
+      # date and time in its own zone, without converting it to UTC, and no zone is stored.
+      # 
+      # _@param_ `name` — field name
+      # 
+      # _@param_ `unit` — +:millis+, +:micros+ or +:nanos+
+      # 
+      # _@param_ `opts` — options of #column
+      # 
+      # _@return_ — the added node
+      sig { params(name: T.any(String, Symbol), unit: Symbol, opts: T::Hash[Symbol, Object]).returns(Node) }
+      def local_timestamp(name, unit: :micros, **opts); end
 
       # A DECIMAL column. Up to 9 digits are stored as INT32, up to 18 as INT64, more as a
       # FIXED_LEN_BYTE_ARRAY of the minimal width, unless +physical:+ says otherwise.
@@ -5676,7 +5700,7 @@ module Herringbone
       # 
       # _@param_ `name` — field name
       # 
-      # _@param_ `type` — DSL type: one of PRIMITIVES, or +:time+, +:timestamp+, +:decimal+, +:fixed+, +:enum+ with their options
+      # _@param_ `type` — DSL type: one of PRIMITIVES, or +:time+, +:local_time+, +:timestamp+, +:local_timestamp+, +:decimal+, +:fixed+, +:enum+ with their options
       # 
       # _@param_ `null` — whether the field is nullable (optional rather than required)
       # 

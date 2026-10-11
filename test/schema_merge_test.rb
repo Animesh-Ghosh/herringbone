@@ -57,7 +57,7 @@ class SchemaMergeTest < Minitest::Test
   def test_equality_survives_the_footer_round_trip
     a = define { |s|
       s.decimal :price, precision: 12, scale: 2
-      s.timestamp :at, unit: :millis, utc: false
+      s.local_timestamp :at, unit: :millis
       s.map(:scores, :string, :double)
     }
     assert_equal a, Schema.from_elements(a.to_elements)
@@ -115,7 +115,7 @@ class SchemaMergeTest < Minitest::Test
     refute_equal leaf(:fixed, length: 16), leaf(:fixed, length: 8)
     refute_equal leaf(:decimal, precision: 10, scale: 2), leaf(:decimal, precision: 10, scale: 3)
     refute_equal leaf(:timestamp, unit: :millis), leaf(:timestamp, unit: :micros)
-    refute_equal leaf(:timestamp), leaf(:timestamp, utc: false)
+    refute_equal leaf(:timestamp), leaf(:local_timestamp)
   end
 
   def test_inequality_of_nested_fields
@@ -194,16 +194,16 @@ class SchemaMergeTest < Minitest::Test
 
   %i[timestamp time].each do |kind|
     {%i[millis micros] => :micros, %i[millis nanos] => :nanos, %i[micros nanos] => :nanos}.each do |(a, b), finer|
-      [true, false].each do |utc|
-        define_method("test_#{kind}_#{a}_and_#{b}_#{utc ? "utc" : "local"}_widen_to_#{finer}") do
-          assert_widens leaf(kind, unit: a, utc: utc), leaf(kind, unit: b, utc: utc), leaf(kind, unit: finer, utc: utc)
+      [kind, :"local_#{kind}"].each do |type|
+        define_method("test_#{type}_#{a}_and_#{b}_widen_to_#{finer}") do
+          assert_widens leaf(type, unit: a), leaf(type, unit: b), leaf(type, unit: finer)
         end
       end
     end
 
     define_method("test_#{kind}_utc_and_local_are_incompatible") do
-      assert_incompatible leaf(kind, unit: :micros), leaf(kind, unit: :micros, utc: false), "one is adjusted to UTC and the other is not"
-      assert_incompatible leaf(kind, unit: :millis), leaf(kind, unit: :nanos, utc: false)
+      assert_incompatible leaf(kind, unit: :micros), leaf(:"local_#{kind}", unit: :micros), "one is adjusted to UTC and the other is not"
+      assert_incompatible leaf(kind, unit: :millis), leaf(:"local_#{kind}", unit: :nanos)
     end
   end
 
@@ -216,7 +216,7 @@ class SchemaMergeTest < Minitest::Test
     millis = raw_leaf(type: T::INT64, converted_type: C::TIMESTAMP_MILLIS)
     assert_widens millis, leaf(:timestamp, unit: :micros), leaf(:timestamp, unit: :micros)
     assert_widens millis, leaf(:timestamp, unit: :millis), leaf(:timestamp, unit: :millis)
-    assert_incompatible millis, leaf(:timestamp, unit: :micros, utc: false)
+    assert_incompatible millis, leaf(:local_timestamp, unit: :micros)
   end
 
   def test_times_and_timestamps_are_incompatible
@@ -602,7 +602,7 @@ class SchemaMergeTest < Minitest::Test
         address.list :lines, :boolean
       }
       s.map :scores, :int32, :int64
-      s.timestamp :at, utc: false
+      s.local_timestamp :at
     }
     error = assert_raises(Herringbone::IncompatibleSchema) { a + b }
     assert_equal <<~MESSAGE.chomp, error.message

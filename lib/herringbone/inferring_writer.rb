@@ -158,7 +158,7 @@ module Herringbone
       type = case kind
       when nil then Format::Type::NAMES[column.type].downcase
       when :integer then "#{details[1] ? "int" : "uint"}#{details[0]}"
-      when :timestamp, :time then "#{kind} (#{details[0]})"
+      when :timestamp, :time then "#{"local_" unless details[1]}#{kind} (#{details[0]})"
       when :decimal then "decimal(#{details[1]}, #{details[0]})"
       else kind.to_s
       end

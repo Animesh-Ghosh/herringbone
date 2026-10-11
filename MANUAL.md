@@ -232,11 +232,17 @@ file and rename it.
 ### Column types
 
 `boolean int8 int16 int32 int64 uint8 uint16 uint32 uint64 float double float16 string binary
-json bson enum uuid date int96 time timestamp decimal fixed`, plus `struct`, `list` and `map`;
+json bson enum uuid date int96 time local_time timestamp local_timestamp decimal fixed`, plus
+`struct`, `list` and `map`;
 `s.column :name, :int32` declares one by name. Fields are nullable unless `null: false` is given;
 list elements unless `element_null: false`, map values unless `value_null: false`. Nested lists:
-`s.list :matrix do |matrix| matrix.list :element, :double end`. `time` and `timestamp` take `unit:`
-(`:millis`, `:micros`, `:nanos`) and `utc:`.
+`s.list :matrix do |matrix| matrix.list :element, :double end`. The time and timestamp types take `unit:`
+(`:millis`, `:micros`, `:nanos`).
+
+`timestamp` stores instants: a `Time` in any zone is converted to UTC, so the file means the same
+thing wherever it was written. `local_timestamp` stores the wall clock date and time as given, with
+no zone, for values like "the shop opens at 09:00" that are not instants. `time` and `local_time`
+do the same for a time of day.
 
 `enum` is a string column. `values:` restricts what may be written, and also takes a Rails-style
 Hash (`values: Order.statuses`), in which case both labels and stored integers are accepted and
@@ -250,8 +256,8 @@ Columns accept the values Ruby and Rails code usually has at hand:
 | column | accepts |
 |---|---|
 | `date` | `Date`, `Time`/`DateTime` (their date), `"2024-05-01"` |
-| `timestamp` | `Time`, `DateTime`, `ActiveSupport::TimeWithZone`, `Date` (midnight UTC), ISO-8601 strings, Integers in the column's unit |
-| `time` | `Time` (its time of day, as Rails returns for `time` columns), `"13:45:30.25"`, Integers |
+| `timestamp`, `local_timestamp` | `Time`, `DateTime`, `ActiveSupport::TimeWithZone`, `Date` (midnight UTC), ISO-8601 strings, Integers in the column's unit |
+| `time`, `local_time` | `Time` (its time of day, in UTC for `time`, as Rails returns for `time` columns), `"13:45:30.25"`, Integers |
 | `json` | Strings as-is, anything else through `JSON.generate` |
 | `string`, `enum` | Strings, Symbols, anything with `to_s` |
 | `boolean` | `true`/`false`, `1`/`0`, `"t"`/`"f"`, `"true"`/`"false"`, `"yes"`/`"no"` |

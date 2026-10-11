@@ -273,7 +273,7 @@ class StreamingReaderTest < Minitest::Test
     s.timestamp :ts
     s.timestamp :ts_ms, unit: :millis
     s.timestamp :ts_ns, unit: :nanos
-    s.timestamp :local, utc: false
+    s.local_timestamp :local
     s.int96 :i96
     s.list :tl, :timestamp
     s.date :d
