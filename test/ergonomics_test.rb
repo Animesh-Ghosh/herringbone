@@ -108,7 +108,7 @@ class ErgonomicsTest < Minitest::Test
     schema = Herringbone::Schema.define { |s|
       s.date :d
       s.timestamp :t
-      s.timestamp :local, utc: false
+      s.local_timestamp :local
     }
     rows = roundtrip(schema, [
       {d: "2024-02-29", t: "2024-02-29T10:00:00.5+02:00", local: Time.new(2024, 2, 29, 10, 0, 0, "+02:00")},
@@ -121,6 +121,29 @@ class ErgonomicsTest < Minitest::Test
     assert_equal Time.utc(2024, 3, 2, 4), rows[2]["t"]
     # Local timestamps keep the wall clock time
     assert_equal Time.utc(2024, 2, 29, 10), rows[0]["local"]
+  end
+
+  def test_time_of_day_is_converted_to_utc_unless_local
+    schema = Herringbone::Schema.define { |s|
+      s.time :at
+      s.local_time :local
+      s.list :ats, :time
+      s.list :locals, :local_time
+    }
+    t = Time.new(2024, 5, 1, 14, 0, 0, "+02:00")
+    rows = roundtrip(schema, [{at: t, local: t, ats: [t], locals: [t]}])
+    assert_equal 12 * 3600 * 1_000_000, rows[0]["at"]
+    assert_equal 14 * 3600 * 1_000_000, rows[0]["local"]
+    assert_equal [12 * 3600 * 1_000_000], rows[0]["ats"]
+    assert_equal [14 * 3600 * 1_000_000], rows[0]["locals"]
+  end
+
+  def test_utc_option_is_refused_with_its_replacement
+    %i[time timestamp].each do |type|
+      error = assert_raises(ArgumentError) { Herringbone::Schema.define { |s| s.column :at, type, utc: false } }
+      assert_includes error.message, "s.local_#{type} :at"
+      assert_raises(ArgumentError) { Herringbone::Schema.define { |s| s.public_send(type, :at, utc: true) } }
+    end
   end
 
   # Stands in for ActiveSupport::TimeWithZone, which is not a Time subclass

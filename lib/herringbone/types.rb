@@ -83,13 +83,14 @@ module Herringbone
     end
 
     # Physical attributes (type, logical type etc.) for a DSL type name
+    #
+    # +:time+ and +:timestamp+ are adjusted to UTC; +:local_time+ and +:local_timestamp+ are not,
+    # and get no legacy converted type.
     # @param type [Symbol, String] column type name, e.g. +:string+, +:int64+, +:decimal+, +:timestamp+
     # @param opts [Hash{Symbol => Object}] type-specific options
     # @option opts [Boolean] :parquet_enum for +:enum+, annotate as ENUM instead of STRING
     # @option opts [Integer] :length byte length for +:fixed+ (required)
-    # @option opts [Symbol] :unit (:micros) for +:time+ and +:timestamp+, see {time_unit}
-    # @option opts [Boolean] :utc (true) for +:time+ and +:timestamp+, sets +is_adjusted_to_utc+;
-    #   the legacy converted type is only written when true
+    # @option opts [Symbol] :unit (:micros) for the time and timestamp types, see {time_unit}
     # @option opts [Integer] :precision number of decimal digits for +:decimal+ (required)
     # @option opts [Integer] :scale (0) digits after the decimal point for +:decimal+
     # @option opts [Symbol] :physical for +:decimal+, force +:int32+, +:int64+, +:binary+ or
@@ -127,16 +128,18 @@ module Herringbone
       when :int96 then {type: T::INT96}
       when :fixed
         {type: T::FIXED_LEN_BYTE_ARRAY, type_length: Integer(opts.fetch(:length))}
-      when :time
+      when :time, :local_time
+        utc = type.to_sym == :time
         unit = time_unit(opts.fetch(:unit, :micros))
         converted = {millis: C::TIME_MILLIS, micros: C::TIME_MICROS}[unit.to_sym]
-        {type: unit.millis ? T::INT32 : T::INT64, converted_type: opts.fetch(:utc, true) ? converted : nil,
-         logical_type: lt(time: Format::TimeType.new(is_adjusted_to_utc: opts.fetch(:utc, true), unit: unit))}
-      when :timestamp
+        {type: unit.millis ? T::INT32 : T::INT64, converted_type: utc ? converted : nil,
+         logical_type: lt(time: Format::TimeType.new(is_adjusted_to_utc: utc, unit: unit))}
+      when :timestamp, :local_timestamp
+        utc = type.to_sym == :timestamp
         unit = time_unit(opts.fetch(:unit, :micros))
         converted = {millis: C::TIMESTAMP_MILLIS, micros: C::TIMESTAMP_MICROS}[unit.to_sym]
-        {type: T::INT64, converted_type: opts.fetch(:utc, true) ? converted : nil,
-         logical_type: lt(timestamp: Format::TimestampType.new(is_adjusted_to_utc: opts.fetch(:utc, true), unit: unit))}
+        {type: T::INT64, converted_type: utc ? converted : nil,
+         logical_type: lt(timestamp: Format::TimestampType.new(is_adjusted_to_utc: utc, unit: unit))}
       when :decimal
         precision = Integer(opts.fetch(:precision))
         scale = Integer(opts.fetch(:scale, 0))
@@ -337,7 +340,8 @@ module Herringbone
     #   date:      Date, Time/DateTime (its calendar date), ISO-8601 String, Integer days since epoch
     #   timestamp: Time, DateTime, ActiveSupport::TimeWithZone, Date (midnight UTC), ISO-8601 String,
     #              Integer in the column's unit
-    #   time:      Time (its time of day), "HH:MM[:SS[.fraction]]" String, Integer in the column's unit
+    #   time:      Time (its time of day, in UTC unless the column is local), "HH:MM[:SS[.fraction]]"
+    #              String, Integer in the column's unit
     #   json:      String (used as-is) or any other object (serialized with JSON.generate)
     #   string:    String, Symbol or anything responding to to_s
     #   boolean:   true/false, 1/0, "true"/"false", "t"/"f", "1"/"0", "yes"/"no"
@@ -357,7 +361,7 @@ module Herringbone
       when :timestamp
         return timestamp_writer(a, b)
       when :time
-        return time_writer(a) if type == T::INT32 || type == T::INT64
+        return time_writer(a, b) if type == T::INT32 || type == T::INT64
       when :json
         return ->(v) { v.is_a?(String) ? v : JSON.generate(v) }
       when :string, :enum
@@ -483,9 +487,11 @@ module Herringbone
     # anything responding to +hour+ and +nsec+ (Time, DateTime), and raises ArgumentError or
     # RangeError for anything else or a time past 23:59:59.
     # @param unit [Symbol] +:millis+, +:micros+ or +:nanos+
+    # @param utc [Boolean] whether the column is adjusted to UTC; when true a Time is converted to
+    #   UTC first, when false its wall clock time of day is stored
     # @return [Proc] one-argument lambda
     # @raise [KeyError] for an unknown unit
-    def time_writer(unit)
+    def time_writer(unit, utc)
       mult = UNIT_DIVISORS.fetch(unit)
       lambda do |v|
         return v if v.is_a?(Integer)
@@ -496,6 +502,7 @@ module Herringbone
           secs = m[1].to_i * 3600 + m[2].to_i * 60 + m[3].to_i
         else
           raise ArgumentError, "expected a Time, got #{v.class}" unless v.respond_to?(:hour) && v.respond_to?(:nsec)
+          v = v.getutc if utc && v.respond_to?(:getutc)
           nanos = v.nsec
           secs = v.hour * 3600 + v.min * 60 + v.sec
         end

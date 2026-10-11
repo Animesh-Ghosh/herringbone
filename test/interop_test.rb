@@ -243,7 +243,7 @@ class InteropTest < Minitest::Test
       "en" => [:enum], "uid" => [:uuid], "date" => [:date], "t_ms" => [:time, {unit: :millis}],
       "t_us" => [:time, {unit: :micros}], "t_ns" => [:time, {unit: :nanos}],
       "ts_ms" => [:timestamp, {unit: :millis}], "ts_us" => [:timestamp, {unit: :micros}],
-      "ts_ns" => [:timestamp, {unit: :nanos}], "ts_local" => [:timestamp, {unit: :micros, utc: false}],
+      "ts_ns" => [:timestamp, {unit: :nanos}], "ts_local" => [:local_timestamp, {unit: :micros}],
       "i96" => [:int96], "dec_small" => [:decimal, {precision: 9, scale: 2}],
       "dec_med" => [:decimal, {precision: 18, scale: 4}], "dec_large" => [:decimal, {precision: 38, scale: 10}],
       "dec_bin" => [:decimal, {precision: 25, scale: 3, physical: :binary}], "fx" => [:fixed, {length: 5}]

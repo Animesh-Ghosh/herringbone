@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `time` columns store a `Time` as its time of day in UTC, as their isAdjustedToUTC flag says,
+  instead of in the `Time`'s own zone.
+- **Breaking:** `local_timestamp` and `local_time` (`s.local_timestamp :opens_at`,
+  `s.column :opens_at, :local_timestamp`) replace the `utc: false` option, which now raises.
+
 ## 0.7.0
 
 - `Herringbone.redact` and `Herringbone::Redaction#apply` take a `Herringbone::Reader` as well as an

@@ -128,7 +128,7 @@ module Herringbone
         when :boolean then [:boolean, {}]
         when :binary then [:binary, {}]
         when :date then [:date, {}]
-        when :datetime, :timestamp, :timestamptz then [:timestamp, {unit: :micros, utc: true}]
+        when :datetime, :timestamp, :timestamptz then [:timestamp, {unit: :micros}]
         when :time then [:time, {unit: :micros}]
         when :json, :jsonb then [:json, {}]
         when :uuid then [:uuid, {}]
