@@ -14,6 +14,7 @@ require "herringbone"
 rescue LoadError
 end
 require "get_process_mem"
+require "tmpdir"
 require_relative "dataset"
 
 rows = Integer(ENV.fetch("ROWS", "20000000").delete("_"))
