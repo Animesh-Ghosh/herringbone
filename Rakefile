@@ -39,4 +39,4 @@ task :types do
   end
 end
 
-task default: [:"standard:fix", :"yard:lint", :types, :test]
+task default: [:test, :"standard:fix", :"yard:lint", :types]
