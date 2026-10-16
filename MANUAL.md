@@ -19,6 +19,7 @@ The full reference for Herringbone. For a quick start, see the [README](README.m
   - [SimpleWriter: coming from CSV](#simplewriter-coming-from-csv)
   - [Statistics, page indexes and bloom filters](#statistics-page-indexes-and-bloom-filters)
   - [Writing to S3](#writing-to-s3)
+  - [Writing to Google Cloud Storage](#writing-to-google-cloud-storage)
 - [Encryption](#encryption)
   - [Writing encrypted files](#writing-encrypted-files)
   - [Which settings other tools read](#which-settings-other-tools-read)
@@ -358,6 +359,18 @@ s3.upload_stream(bucket: "exports", key: "orders.parquet") { |io| Herringbone.wr
 If the block raises, the SDK aborts the multipart upload and raises `Aws::S3::MultipartUploadError`,
 so no partial object is left. S3 allows at most 10,000 parts, which with the default 5MB parts caps
 the file at about 48GB; raise `part_size:` for bigger files.
+
+### Writing to Google Cloud Storage
+
+`google-cloud-storage` needs the size of an upload up front, so it can't take a stream. Use
+[gcs_put](https://github.com/julik/gcs_put), which streams into a resumable upload of unknown size:
+
+```ruby
+gcs_file = Google::Cloud::Storage.new.bucket("exports").file("orders.parquet", skip_lookup: true)
+GCSPut.open_gcs_file(gcs_file) { |io| Herringbone.write(io, Order.all) }
+```
+
+If the block raises, the upload is never finalized and no object appears.
 
 ## Encryption
 

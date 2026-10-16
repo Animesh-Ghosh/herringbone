@@ -46,7 +46,9 @@ end
 ```
 
 Any Enumerable of Hashes, Structs or Arrays works too; the schema is inferred from the first 1000
-rows. See [ActiveRecord](MANUAL.md#activerecord) and [Writing to S3](MANUAL.md#writing-to-s3).
+rows. See [ActiveRecord](MANUAL.md#activerecord) and [Writing to S3](MANUAL.md#writing-to-s3). For
+Google Cloud Storage, use [gcs_put](https://github.com/julik/gcs_put), see
+[Writing to Google Cloud Storage](MANUAL.md#writing-to-google-cloud-storage).
 
 ## Reading
 
