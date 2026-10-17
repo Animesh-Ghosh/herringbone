@@ -2,5 +2,5 @@
 
 module Herringbone
   # Gem version, also written to the +created_by+ field of every file's footer
-  VERSION = "0.7.0"
+  VERSION = "0.8.0"
 end
