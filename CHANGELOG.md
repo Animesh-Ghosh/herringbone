@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0
+
 - ZSTD files are read without the `zstd-ruby` gem, by a pure-Ruby decompressor; `zstd-ruby` is
   still used when loaded, and still needed to write ZSTD.
 
