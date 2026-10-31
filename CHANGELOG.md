@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.1
+
 - `Herringbone.combine` works in Ractors other than the main one, and so does reading ZSTD without
   `zstd-ruby`: a few internal tables were frozen only on the outside and raised
   `Ractor::IsolationError`.
