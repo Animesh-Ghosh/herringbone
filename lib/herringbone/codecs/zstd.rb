@@ -45,14 +45,14 @@ module Herringbone
       MAX_OFFSET_CODE = 31
 
       # Predefined FSE distributions (RFC 8878 section 3.1.1.3.2.2), with their accuracy logs
-      LL_DEFAULT = [[4, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2,
-        1, 1, 1, 1, 1, -1, -1, -1, -1], 6].freeze
+      LL_DEFAULT = Ractor.make_shareable([[4, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2,
+        1, 1, 1, 1, 1, -1, -1, -1, -1], 6])
       # Predefined match length distribution and accuracy log
-      ML_DEFAULT = [[1, 4, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1], 6].freeze
+      ML_DEFAULT = Ractor.make_shareable([[1, 4, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1], 6])
       # Predefined offset code distribution and accuracy log
-      OF_DEFAULT = [[1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1,
-        -1, -1, -1], 5].freeze
+      OF_DEFAULT = Ractor.make_shareable([[1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1,
+        -1, -1, -1], 5])
 
       module_function
 

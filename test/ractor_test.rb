@@ -143,6 +143,86 @@ class RactorTest < Minitest::Test
     assert_equal rows["nested.parquet"].map { |r| r.slice("id", "m_nullval") }, read.call("nested.parquet", %w[id m_nullval])
   end
 
+  # Combining goes through Schema::Merge and the Combiner, whose tables a Ractor reads too
+  def test_combine_in_a_ractor
+    skip "Ractors need Ruby 3.1" if RUBY_VERSION < "3.1"
+    inputs = 2.times.map do |i|
+      path = File.join(@dir, "part_#{i}.parquet").freeze
+      File.open(path, "wb") do |f|
+        Herringbone::Writer.open(f, WriterHelpers::ALL_TYPES_SCHEMA) do |w|
+          WriterHelpers.all_types_rows(30).each { |row| w << row }
+        end
+      end
+      path
+    end
+    output = File.join(@dir, "combined.parquet").freeze
+    combiner = Ractor.new(inputs, output) do |inputs, output|
+      ios = inputs.map { |path| File.open(path, "rb") }
+      File.open(output, "wb") { |f| Herringbone.combine(ios, f).rows }
+    ensure
+      ios&.each(&:close)
+    end
+    assert_equal 60, ractor_value(combiner)
+  end
+
+  # The redaction and its blocks are made inside the Ractor, so nothing has to be shareable but the paths
+  def test_redact_in_a_ractor
+    skip "Ractors need Ruby 3.1" if RUBY_VERSION < "3.1"
+    schema = Herringbone::Schema.define do |s|
+      s.int64 :user_id, null: false
+      s.string :email
+      s.string :name
+      s.uint32 :score
+    end
+    input = File.join(@dir, "people.parquet").freeze
+    File.open(input, "wb") do |f|
+      Herringbone::Writer.open(f, schema, row_group_rows: 25) do |w|
+        100.times { |i| w << {user_id: i % 10, email: "user#{i}@example.com", name: "Name #{i}", score: i} }
+      end
+    end
+    output = File.join(@dir, "redacted.parquet").freeze
+    redactor = Ractor.new(input, output) do |input, output|
+      File.open(input, "rb") do |source|
+        File.open(output, "wb") do |f|
+          Herringbone.redact(source, f) do |r|
+            r.where(user_id: 7).delete
+            r.where(user_id: 3).replace(name: nil)
+            r.replace(:email) { |email| email.sub(/@.+/, "@example.org") }
+            r.drop :score
+          end
+        end
+      end
+      :done
+    end
+    assert_equal :done, ractor_value(redactor)
+
+    rows = File.open(output, "rb") { |f| Herringbone::Reader.new(f).read }
+    assert_equal 90, rows.size, "user 7 is gone"
+    refute rows.any? { |row| row["user_id"] == 7 }
+    assert rows.select { |row| row["user_id"] == 3 }.all? { |row| row["name"].nil? }
+    assert rows.all? { |row| row["email"].end_with?("@example.org") }
+    assert_equal %w[user_id email name], rows.first.keys
+  end
+
+  # Any constant a Ractor touches must be shareable, or reading it raises Ractor::IsolationError
+  def test_constants_are_shareable
+    skip "Ractors need Ruby 3.1" if RUBY_VERSION < "3.1"
+    Herringbone.eager_load!
+    unshareable = []
+    walk = lambda do |mod|
+      mod.constants(false).each do |name|
+        value = mod.const_get(name, false)
+        if value.is_a?(Module)
+          walk.call(value) if value.name&.start_with?("#{mod.name}::")
+        elsif !Ractor.shareable?(value)
+          unshareable << "#{mod}::#{name}"
+        end
+      end
+    end
+    walk.call(Herringbone)
+    assert_empty unshareable
+  end
+
   private
 
   # Whether the codecs of the file's column chunks are available

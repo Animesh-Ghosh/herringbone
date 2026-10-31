@@ -19,16 +19,16 @@ module Herringbone
       C = Format::ConvertedType
 
       # Converted integer annotations => [bit width, signed]
-      INT_CONVERTED = {
+      INT_CONVERTED = Ractor.make_shareable({
         C::INT_8 => [8, true], C::INT_16 => [16, true], C::INT_32 => [32, true], C::INT_64 => [64, true],
         C::UINT_8 => [8, false], C::UINT_16 => [16, false], C::UINT_32 => [32, false], C::UINT_64 => [64, false]
-      }.freeze
+      })
 
       # Converted annotations of time and timestamp columns => [kind, unit, adjusted to UTC]
-      TIME_CONVERTED = {
+      TIME_CONVERTED = Ractor.make_shareable({
         C::TIME_MILLIS => [:time, :millis, true], C::TIME_MICROS => [:time, :micros, true],
         C::TIMESTAMP_MILLIS => [:timestamp, :millis, true], C::TIMESTAMP_MICROS => [:timestamp, :micros, true]
-      }.freeze
+      })
 
       # Converted annotations of UTF-8 byte arrays => the text kind
       TEXT_CONVERTED = {C::UTF8 => :string, C::ENUM => :enum, C::JSON => :json}.freeze

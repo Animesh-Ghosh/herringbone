@@ -46,7 +46,7 @@ module Herringbone
     Input = Struct.new(:reader, :copier, :sources, :report)
 
     # Closing paragraph of the message when inputs do not fit the output schema
-    FIT_ADVICE = <<~ADVICE.chomp
+    FIT_ADVICE = <<~ADVICE.chomp.freeze
       Pass a schema every input fits (schema: :union makes one), or schema: :intersect to keep only
       the fields all inputs have.
     ADVICE
