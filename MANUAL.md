@@ -90,6 +90,11 @@ rows.each { |row| writer.send(Ractor.make_shareable(row)) }
 writer.send(:done)
 ```
 
+Combining and redaction work from any Ractor as well. A `Herringbone::Redaction` made shareable
+with `Ractor.make_shareable` can be passed to one, as long as it has no `replace` blocks: a block
+keeps the `self` it was made with, which is not shareable. Build a redaction with blocks inside
+the Ractor that applies it.
+
 Herringbone loads its parts on first use (`require "herringbone"` itself takes under a
 millisecond). Before Ruby 3.4, Ractors other than the main one cannot load code, so call
 `Herringbone.eager_load!` before starting them. It also moves all the loading to boot, for
